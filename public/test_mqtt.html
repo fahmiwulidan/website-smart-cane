@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MQTT JSON Performance Test</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #08111f;
+      --panel: #101b2d;
+      --panel-2: #0d1726;
+      --text: #e5eefc;
+      --muted: #8da2c0;
+      --accent: #4ade80;
+      --warn: #f59e0b;
+      --danger: #f87171;
+      --border: rgba(148, 163, 184, 0.18);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background:
+        radial-gradient(circle at top left, rgba(74, 222, 128, 0.15), transparent 28%),
+        radial-gradient(circle at top right, rgba(14, 165, 233, 0.12), transparent 24%),
+        var(--bg);
+      color: var(--text);
+      padding: 24px;
+    }
+
+    .wrap {
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    .hero {
+      display: grid;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(28px, 4vw, 44px);
+      letter-spacing: -0.03em;
+    }
+
+    .subtitle {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.6;
+      max-width: 760px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap: 16px;
+    }
+
+    .card {
+      background: linear-gradient(180deg, rgba(16, 27, 45, 0.96), rgba(13, 23, 38, 0.96));
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.28);
+      backdrop-filter: blur(8px);
+    }
+
+    .stats {
+      grid-column: span 12;
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      padding: 16px;
+    }
+
+    .stat {
+      padding: 16px;
+      border-radius: 14px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .label {
+      color: var(--muted);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      margin-bottom: 10px;
+    }
+
+    .value {
+      font-size: 22px;
+      font-weight: 700;
+      word-break: break-word;
+    }
+
+    .ok { color: var(--accent); }
+    .warn { color: var(--warn); }
+    .danger { color: var(--danger); }
+
+    .left {
+      grid-column: span 4;
+      padding: 18px;
+    }
+
+    .right {
+      grid-column: span 8;
+      padding: 18px;
+    }
+
+    .section-title {
+      margin: 0 0 12px;
+      font-size: 16px;
+      letter-spacing: 0.02em;
+    }
+
+    .controls {
+      display: grid;
+      gap: 12px;
+    }
+
+    input, button, select {
+      width: 100%;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--text);
+      padding: 12px 14px;
+      font: inherit;
+    }
+
+    button {
+      cursor: pointer;
+      background: linear-gradient(135deg, #22c55e, #14b8a6);
+      color: #02110b;
+      font-weight: 800;
+      border: 0;
+    }
+
+    button.secondary {
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+
+    .log {
+      margin: 0;
+      padding: 16px;
+      min-height: 420px;
+      max-height: 70vh;
+      overflow: auto;
+      background: #07101c;
+      color: #d7e5ff;
+      border-radius: 14px;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      white-space: pre-wrap;
+      word-break: break-word;
+      line-height: 1.5;
+    }
+
+    .hint {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.5;
+      margin-top: 10px;
+    }
+
+    @media (max-width: 900px) {
+      .stats, .left, .right { grid-column: span 12; }
+      .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+
+    @media (max-width: 560px) {
+      body { padding: 14px; }
+      .stats { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="hero">
+    <h1>MQTT JSON Performance Test</h1>
+    <p class="subtitle">Halaman ini subscribe langsung ke topic MQTT dan menampilkan payload JSON realtime. Tidak ada database, jadi ini cocok untuk uji performa dan demo data live dari broker.</p>
+  </div>
+
+  <div class="grid">
+    <div class="card stats">
+      <div class="stat">
+        <div class="label">Status</div>
+        <div class="value" id="statusText">Connecting...</div>
+      </div>
+      <div class="stat">
+        <div class="label">Topic</div>
+        <div class="value" id="topicText">smartcane/device01/status</div>
+      </div>
+      <div class="stat">
+        <div class="label">Messages</div>
+        <div class="value" id="messageCount">0</div>
+      </div>
+      <div class="stat">
+        <div class="label">Last Update</div>
+        <div class="value" id="lastUpdate">-</div>
+      </div>
+    </div>
+
+    <div class="card left">
+      <h2 class="section-title">Connection</h2>
+      <div class="controls">
+        <input id="brokerInput" value="wss://broker.hivemq.com:8884/mqtt" />
+        <input id="topicInput" value="smartcane/device01/status" />
+        <button id="connectBtn" type="button">Connect / Reconnect</button>
+        <button id="clearBtn" class="secondary" type="button">Clear JSON</button>
+      </div>
+      <div class="hint">Pastikan device Anda publish ke topic yang sama. Jika payload sudah JSON, hasilnya akan diparse otomatis dan ditampilkan di panel kanan.</div>
+    </div>
+
+    <div class="card right">
+      <h2 class="section-title">Live JSON</h2>
+      <pre id="log" class="log">Connecting...</pre>
+    </div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+<script>
+  const log = document.getElementById("log");
+  const statusText = document.getElementById("statusText");
+  const topicText = document.getElementById("topicText");
+  const messageCount = document.getElementById("messageCount");
+  const lastUpdate = document.getElementById("lastUpdate");
+  const brokerInput = document.getElementById("brokerInput");
+  const topicInput = document.getElementById("topicInput");
+  const connectBtn = document.getElementById("connectBtn");
+  const clearBtn = document.getElementById("clearBtn");
+
+  let client = null;
+  let totalMessages = 0;
+
+  function formatTime(date) {
+    return date.toLocaleTimeString('id-ID', { hour12: false });
+  }
+
+  function renderPayload(topic, rawMessage) {
+    const text = rawMessage.toString();
+    let parsed = null;
+
+    try {
+      parsed = JSON.parse(text);
+    } catch (error) {
+      parsed = null;
+    }
+
+    const payload = parsed ? JSON.stringify(parsed, null, 2) : text;
+    log.innerText = `Topic: ${topic}\n\n${payload}`;
+  }
+
+  function connectMqtt() {
+    const broker = brokerInput.value.trim();
+    const topic = topicInput.value.trim();
+
+    if (client) {
+      client.end(true);
+    }
+
+    statusText.textContent = "Connecting...";
+    statusText.className = "value warn";
+    topicText.textContent = topic || "-";
+
+    client = mqtt.connect(broker, {
+      reconnectPeriod: 3000,
+      keepalive: 60,
+      clean: true
+    });
+
+    client.on("connect", () => {
+      statusText.textContent = "CONNECTED";
+      statusText.className = "value ok";
+      log.innerText = "CONNECTED ✅\nWaiting for MQTT JSON...";
+
+      if (topic) {
+        client.subscribe(topic, (err) => {
+          if (err) {
+            statusText.textContent = "SUBSCRIBE ERROR";
+            statusText.className = "value danger";
+            log.innerText = "SUBSCRIBE ERROR: " + err.message;
+          }
+        });
+      }
+    });
+
+    client.on("message", (topic, message) => {
+      totalMessages += 1;
+      messageCount.textContent = totalMessages.toString();
+      lastUpdate.textContent = formatTime(new Date());
+      renderPayload(topic, message);
+    });
+
+    client.on("reconnect", () => {
+      statusText.textContent = "RECONNECTING";
+      statusText.className = "value warn";
+    });
+
+    client.on("offline", () => {
+      statusText.textContent = "OFFLINE";
+      statusText.className = "value warn";
+    });
+
+    client.on("error", (err) => {
+      statusText.textContent = "ERROR";
+      statusText.className = "value danger";
+      log.innerText = "ERROR: " + err.message;
+    });
+  }
+
+  connectBtn.addEventListener("click", connectMqtt);
+
+  clearBtn.addEventListener("click", () => {
+    log.innerText = "Cleared.";
+    totalMessages = 0;
+    messageCount.textContent = "0";
+    lastUpdate.textContent = "-";
+  });
+
+  connectMqtt();
+</script>
+
+</body>
+</html>
