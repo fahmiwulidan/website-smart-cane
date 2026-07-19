@@ -743,15 +743,7 @@ setInterval(loadGPS, 10000);
    SAVE GPS HISTORY (SHARED GLOBAL)
 ===================================================== */
 
-// 🔥 GLOBAL agar tidak double insert antar halaman
-if (!window.lastSavedTime) {
-    window.lastSavedTime = Date.now() - 600000; // langsung boleh save pertama
-}
-
 function saveGPSHistory(lat, lng) {
-    const now = Date.now();
-
-    if (now - window.lastSavedTime < 600000) return;
 
     console.log("💾 [MAP] Kirim GPS ke DB...");
 
@@ -765,14 +757,12 @@ function saveGPSHistory(lat, lng) {
     .then(res => res.json())
     .then(res => console.log("✅ [MAP] Saved:", res))
     .catch(err => console.error("❌ [MAP] Error:", err));
-
-    window.lastSavedTime = now;
 }
 
 /* ===============================
    MQTT CONFIG (REALTIME MAP)
 ================================ */
-const MQTT_BROKER = "ws://127.0.0.1:9001";
+const MQTT_BROKER = "wss://broker.hivemq.com:8884/mqtt";
 const MQTT_TOPIC  = "smartcane/device01/status";
 const mqttClient  = mqtt.connect(MQTT_BROKER);
 

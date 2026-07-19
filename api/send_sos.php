@@ -1,4 +1,5 @@
 <?php
+
 ini_set('display_errors', 1);
 error_reporting(E_ALL);
 
@@ -58,54 +59,15 @@ if (!$conn) {
 }
 
 /* =========================
-   CEK SOS AKTIF
-   Supaya WA tidak spam
+   NONAKTIFKAN SOS LAMA
+   supaya history tetap tersimpan
+   dan hanya 1 SOS aktif terakhir
 ========================= */
-$stmt = $conn->prepare("
-    SELECT id, source
-    FROM sos_logs
-    WHERE is_active = 1
-    ORDER BY id DESC
-    LIMIT 1
-");
-
-$stmt->execute();
-$result = $stmt->get_result();
-
-if ($result && $result->num_rows > 0) {
-
-    $row = $result->fetch_assoc();
-    $id  = (int)$row['id'];
-
-    if (!$force) {
-        $update = $conn->prepare("
-            UPDATE sos_logs
-            SET latitude = ?, longitude = ?, sos_time = NOW(), source = ?
-            WHERE id = ?
-        ");
-
-        $update->bind_param("ddsi", $lat, $lng, $source, $id);
-        $update->execute();
-        $update->close();
-
-        Response::json([
-            "status" => true,
-            "msg" => "SOS masih aktif, lokasi diperbarui. WhatsApp tidak dikirim ulang.",
-            "id" => $id,
-            "source" => $source,
-            "gps_valid" => $gpsValid,
-            "whatsapp_sent" => false
-        ]);
-        exit;
-    }
-
-    $deactivate = $conn->prepare("UPDATE sos_logs SET is_active = 0 WHERE id = ?");
-    $deactivate->bind_param("i", $id);
+$deactivate = $conn->prepare("UPDATE sos_logs SET is_active = 0 WHERE is_active = 1");
+if ($deactivate) {
     $deactivate->execute();
     $deactivate->close();
 }
-
-$stmt->close();
 
 /* =========================
    INSERT SOS BARU
@@ -144,7 +106,6 @@ $insert->close();
 $time = date('d-m-Y H:i:s');
 
 if ($source === 'fall') {
-
     if ($gpsValid) {
         $message =
             "🚨 *TERDETEKSI JATUH*\n\n" .
@@ -158,9 +119,7 @@ if ($source === 'fall') {
             "📡 Status GPS:\nTIDAK AKTIF / Belum mendapatkan lokasi.\n\n" .
             "_Pesan ini dikirim otomatis oleh sistem._";
     }
-
 } else {
-
     if ($gpsValid) {
         $message =
             "⚠️ *DARURAT (SOS)*\n\n" .
@@ -195,7 +154,7 @@ try {
 ========================= */
 Response::json([
     "status" => true,
-    "msg" => "SOS baru aktif dan WhatsApp diproses",
+    "msg" => "SOS baru berhasil disimpan",
     "id" => $sosId,
     "source" => $source,
     "gps_valid" => $gpsValid,

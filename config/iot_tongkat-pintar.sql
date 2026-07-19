@@ -15,17 +15,18 @@ CREATE TABLE IF NOT EXISTS gps_logs (
 );
 
 -- =========================================
--- TABLE: alat_status (SENSOR)
+-- TABLE: alat_status (STATUS ALAT)
 -- =========================================
 CREATE TABLE IF NOT EXISTS alat_status (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    id_alat INT DEFAULT 1,
+    id_alat INT NOT NULL DEFAULT 1,
     latitude DOUBLE,
     longitude DOUBLE,
-    jarak INT,
-    buzzer TINYINT(1),
-    batterai_persen INT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    jarak INT DEFAULT 0,
+    buzzer TINYINT(1) DEFAULT 0,
+    batterai_persen INT DEFAULT 100,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        ON UPDATE CURRENT_TIMESTAMP
 );
 
 -- =========================================
@@ -36,24 +37,25 @@ CREATE TABLE IF NOT EXISTS sos_logs (
     latitude DOUBLE NOT NULL,
     longitude DOUBLE NOT NULL,
     sos_time DATETIME DEFAULT CURRENT_TIMESTAMP,
-    is_active TINYINT(1) DEFAULT 1
+    is_active TINYINT(1) NOT NULL DEFAULT 1,
+    source ENUM('manual','fall') NOT NULL DEFAULT 'manual'
 );
 
 -- =========================================
--- TABLE: settings (CONFIG)
+-- TABLE: settings
 -- =========================================
 CREATE TABLE IF NOT EXISTS settings (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    nama_setting VARCHAR(100),
-    value VARCHAR(255)
+    nama_setting VARCHAR(100) NOT NULL UNIQUE,
+    value VARCHAR(255) NOT NULL
 );
 
 -- =========================================
--- TABLE: users (LOGIN & OTP)
+-- TABLE: users
 -- =========================================
 CREATE TABLE IF NOT EXISTS users (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    nomor_hp VARCHAR(20),
+    nomor_hp VARCHAR(20) NOT NULL,
     otp VARCHAR(10),
     otp_expired DATETIME
 );
@@ -62,22 +64,42 @@ CREATE TABLE IF NOT EXISTS users (
 -- INSERT DEFAULT DATA
 -- =========================================
 
--- Nomor SOS
 INSERT INTO settings (nama_setting, value)
 VALUES ('nomor_sos', '6285719916327');
 
--- User default
 INSERT INTO users (nomor_hp, otp, otp_expired)
-VALUES ('6285719916327', '123456', DATE_ADD(NOW(), INTERVAL 10 MINUTE));
+VALUES (
+    '6285719916327',
+    '123456',
+    DATE_ADD(NOW(), INTERVAL 10 MINUTE)
+);
 
--- Status alat default
-INSERT INTO alat_status (id_alat, latitude, longitude, jarak, buzzer, batterai_persen)
-VALUES (1, -7.134418, 112.380799, 0, 0, 100);
+INSERT INTO alat_status
+(id_alat, latitude, longitude, jarak, buzzer, batterai_persen)
+VALUES
+(
+    1,
+    -7.134418,
+    112.380799,
+    0,
+    0,
+    100
+);
 
--- GPS sample
-INSERT INTO gps_logs (latitude, longitude)
-VALUES (-7.134215, 112.378447);
+INSERT INTO gps_logs
+(latitude, longitude)
+VALUES
+(
+    -7.134215,
+    112.378447
+);
 
--- SOS sample (inactive)
-INSERT INTO sos_logs (latitude, longitude, is_active)
-VALUES (-0.53321, 117.12532, 0);
+INSERT INTO sos_logs
+(latitude, longitude, is_active, source)
+VALUES
+(
+    -7.134215,
+    112.378447,
+    0,
+    'manual'
+);
